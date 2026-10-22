@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Secure Messaging | AES + RSA</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(18, 27, 49, .88);
+      --panel-2: #111b31;
+      --text: #eef3ff;
+      --muted: #9aa9c6;
+      --line: rgba(163, 184, 225, .17);
+      --primary: #7c8cff;
+      --primary-2: #5b6ef5;
+      --green: #4adea6;
+      --red: #ff7b8b;
+      --shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse at 10% 0%, rgba(91,110,245,.22), transparent 35%),
+        radial-gradient(ellipse at 100% 15%, rgba(74,222,166,.10), transparent 30%),
+        var(--bg);
+    }
+    .container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 48px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:28px; }
+    .brand { display:flex; align-items:center; gap:13px; }
+    .logo { width:48px; height:48px; display:grid; place-items:center; border-radius:15px; background:linear-gradient(135deg,#8492ff,#5366ee); box-shadow:0 10px 30px #5366ee40; font-size:24px; }
+    h1 { margin:0; font-size:clamp(22px,4vw,32px); letter-spacing:-.8px; }
+    .subtitle { color:var(--muted); margin:5px 0 0; font-size:13px; }
+    .badge { border:1px solid #4adea64d; background:#4adea612; color:var(--green); padding:8px 12px; border-radius:999px; font-size:12px; white-space:nowrap; }
+    .hero { padding:25px; border:1px solid var(--line); background:linear-gradient(135deg,rgba(124,140,255,.13),rgba(18,27,49,.75)); border-radius:22px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .hero h2 { margin:0 0 8px; font-size:20px; }
+    .hero p { margin:0; color:var(--muted); line-height:1.65; font-size:14px; }
+    .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:20px; }
+    .flow-item { background:#0d1528a8; border:1px solid var(--line); border-radius:13px; padding:13px; }
+    .flow-item b { display:block; font-size:12px; margin-bottom:5px; }
+    .flow-item span { color:var(--muted); font-size:11px; line-height:1.4; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+    .card { min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:22px; box-shadow:var(--shadow); }
+    .card-heading { display:flex; align-items:center; gap:11px; margin-bottom:18px; }
+    .step { width:34px; height:34px; flex-shrink:0; display:grid; place-items:center; background:#7c8cff20; color:#aab4ff; border:1px solid #7c8cff45; border-radius:11px; font-weight:800; }
+    h3 { margin:0; font-size:17px; }
+    .card-heading p { margin:4px 0 0; font-size:12px; color:var(--muted); }
+    label { display:block; font-size:12px; font-weight:700; color:#cbd6ed; margin:15px 0 8px; }
+    textarea, input, .output {
+      width:100%; color:var(--text); background:#0a1223; border:1px solid var(--line);
+      border-radius:12px; padding:12px 13px; outline:none; font:inherit; font-size:13px;
+    }
+    textarea { min-height:115px; resize:vertical; line-height:1.5; }
+    input:focus, textarea:focus { border-color:#7c8cff9c; box-shadow:0 0 0 3px #7c8cff16; }
+    .help { color:var(--muted); font-size:11px; line-height:1.55; margin:7px 0 0; }
+    .buttons { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    button { border:0; border-radius:11px; padding:11px 15px; font-weight:750; font-size:12px; cursor:pointer; transition:transform .15s,opacity .15s; }
+    button:hover { transform:translateY(-1px); } button:disabled { opacity:.55; cursor:wait; transform:none; }
+    .primary { color:white; background:linear-gradient(135deg,var(--primary),var(--primary-2)); }
+    .secondary { color:#d8e0f4; background:#ffffff0b; border:1px solid var(--line); }
+    .success { color:#071c16; background:var(--green); }
+    .output { min-height:72px; overflow-wrap:anywhere; white-space:pre-wrap; color:#b9c8e7; line-height:1.55; }
+    .output.empty { color:#647491; font-style:italic; }
+    .result-label { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .mini { font-size:10px; color:#aab4ff; font-weight:700; }
+    .status { display:none; padding:12px 14px; margin:0 0 18px; border-radius:12px; font-size:13px; line-height:1.5; }
+    .status.show { display:block; }
+    .status.ok { background:#4adea612; border:1px solid #4adea64d; color:#a5f3d1; }
+    .status.error { background:#ff7b8b12; border:1px solid #ff7b8b55; color:#ffb1bb; }
+    .full { grid-column:1/-1; }
+    .footer { text-align:center; color:#73819e; font-size:11px; margin-top:23px; line-height:1.6; }
+    .key-details { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .pill { display:inline-block; padding:5px 8px; border-radius:8px; background:#ffffff0a; color:#aab7d2; font-size:10px; }
+    @media(max-width:760px) { .grid {grid-template-columns:1fr;} .flow {grid-template-columns:1fr 1fr;} header {align-items:flex-start;} .badge {display:none;} .full {grid-column:auto;} }
+    @media(max-width:420px) { .container {width:calc(100% - 20px); padding-top:22px;} .card,.hero {padding:16px;} .flow {gap:7px;} .flow-item {padding:10px;} .key-details {grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🔐</div>
+        <div>
+          <h1>Secure Messaging</h1>
+          <p class="subtitle">Hybrid Encryption Demonstration · AES + RSA</p>
+        </div>
+      </div>
+      <div class="badge">● Web Crypto API</div>
+    </header>
+
+    <section class="hero">
+      <h2>Send messages securely</h2>
+      <p>This academic demo uses AES-256-GCM to encrypt your message and RSA-OAEP (2048-bit) to encrypt the AES key. The same page simulates the recipient by using the matching RSA private key to recover the AES key and decrypt the message.</p>
+      <div class="flow">
+        <div class="flow-item"><b>01 · Generate keys</b><span>Create an AES key and an RSA public/private key pair.</span></div>
+        <div class="flow-item"><b>02 · Encrypt message</b><span>AES-GCM protects the message and its integrity.</span></div>
+        <div class="flow-item"><b>03 · Protect AES key</b><span>RSA-OAEP encrypts the AES key with the public key.</span></div>
+        <div class="flow-item"><b>04 · Decrypt</b><span>Private key recovers AES key; AES decrypts the message.</span></div>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-heading">
+          <div class="step">1</div>
+          <div><h3>Sender · Compose</h3><p>Enter the message to encrypt</p></div>
+        </div>
+        <label for="plainMessage">Original message</label>
+        <textarea id="plainMessage" placeholder="Type a private message here...">Hello! This is a secure message for my recipient.</textarea>
+        <p class="help">Your message is processed locally in this browser demo. It is not sent to a server.</p>
+        <div class="buttons">
+          <button id="encryptBtn" class="primary">🔒 Encrypt Message</button>
+          <button id="sampleBtn" class="secondary">Use Sample</button>
+        </div>
+        <label>Encrypted message · AES-256-GCM <span class="mini">BASE64</span></label>
+        <div id="cipherText" class="output empty">Encrypted message will appear here.</div>
+        <label>Encrypted AES key · RSA-OAEP <span class="mini">BASE64</span></label>
+        <div id="encryptedKey" class="output empty">Encrypted AES key will appear here.</div>
+        <div class="key-details" style="margin-top:12px">
+          <div><label>IV (nonce)</label><div id="ivValue" class="output empty">—</div></div>
+          <div><label>RSA key size</label><div class="output">2048 bits</div></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-heading">
+          <div class="step">2</div>
+          <div><h3>Recipient · Decrypt</h3><p>Recover the key and original message</p></div>
+        </div>
+        <div style="margin-bottom:14px"><span class="pill">RSA private key → AES key → plaintext</span></div>
+        <label for="receivedCipher">Received encrypted message (Base64)</label>
+        <textarea id="receivedCipher" placeholder="Encrypted message will be copied here..." spellcheck="false"></textarea>
+        <label for="receivedKey">Received encrypted AES key (Base64)</label>
+        <textarea id="receivedKey" placeholder="Encrypted AES key will be copied here..." spellcheck="false" style="min-height:75px"></textarea>
+        <label for="receivedIv">Received IV (Base64)</label>
+        <input id="receivedIv" placeholder="Initialization vector" spellcheck="false" />
+        <p class="help">For this demo, the recipient's RSA private key is kept in memory in this browser session. Refreshing the page resets the keys.</p>
+        <div class="buttons">
+          <button id="decryptBtn" class="success">🔓 Decrypt Message</button>
+          <button id="copyBtn" class="secondary">Copy encrypted package</button>
+        </div>
+        <label>Recovered original message</label>
+        <div id="decryptedText" class="output empty">Decrypted message will appear here.</div>
+        <label>Decryption result</label>
+        <div id="decryptResult" class="output empty">Waiting for decryption.</div>
+      </article>
+
+      <article class="card full">
+        <div class="card-heading">
+          <div class="step">✓</div>
+          <div><h3>How the hybrid encryption works</h3><p>What this activity demonstrates</p></div>
+        </div>
+        <p class="help" style="font-size:13px">
+          <b style="color:#eef3ff">AES (symmetric encryption):</b> one randomly generated AES-256 key encrypts and decrypts the message. AES-GCM also detects tampering.<br><br>
+          <b style="color:#eef3ff">RSA (asymmetric encryption):</b> the recipient's public key encrypts the AES key; only the matching private key can recover it.<br><br>
+          <b style="color:#eef3ff">Important:</b> this is an educational single-browser demonstration. A real messaging system must securely distribute and verify public keys, protect private keys, and use authenticated transport where appropriate.
+        </p>
+      </article>
+    </section>
+    <footer class="footer">Secure Messaging Web App · GMIU Activity · HTML + Internal CSS + JavaScript<br>Uses the browser's built-in Web Crypto API; no external libraries required.</footer>
+  </main>
+
+  <script>
+    "use strict";
+
+    // All cryptographic operations use the browser's built-in Web Crypto API.
+    // Keys are generated fresh and held only in memory for this demo session.
+    let rsaKeyPair = null;
+    let lastPackage = null;
+
+    const $ = (id) => document.getElementById(id);
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function base64ToBytes(base64) {
+      const cleaned = base64.trim().replace(/\s/g, "");
+      if (!cleaned) throw new Error("Please provide all encrypted values.");
+      const binary = atob(cleaned);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    function setOutput(id, value, isEmpty = false) {
+      const el = $(id);
+      el.textContent = value;
+      el.classList.toggle("empty", isEmpty);
+    }
+
+    function showStatus(message, type = "ok") {
+      const el = $("status");
+      el.textContent = message;
+      el.className = "status show " + type;
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    async function ensureRSAKeys() {
+      if (!window.crypto || !window.crypto.subtle) {
+        throw new Error("Web Crypto API is not available. Open this file in a modern browser using localhost or HTTPS.");
+      }
+      if (!rsaKeyPair) {
+        rsaKeyPair = await crypto.subtle.generateKey(
+          {
+            name: "RSA-OAEP",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: "SHA-256"
+          },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+      return rsaKeyPair;
+    }
+
+    async function encryptMessage() {
+      const message = $("plainMessage").value;
+      if (!message.trim()) {
+        showStatus("Please enter a message before encrypting.", "error");
+        return;
+      }
+
+      $("encryptBtn").disabled = true;
+      try {
+        showStatus("Generating keys and encrypting the message…", "ok");
+        const pair = await ensureRSAKeys();
+
+        // Generate a fresh AES-256-GCM key for this message.
+        const aesKey = await crypto.subtle.generateKey(
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        );
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedBytes = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          aesKey,
+          encoder.encode(message)
+        );
+
+        // Export the AES key, then encrypt that key with the recipient's RSA public key.
+        const rawAESKey = await crypto.subtle.exportKey("raw", aesKey);
+        const encryptedAESKey = await crypto.subtle.encrypt(
+          { name: "RSA-OAEP" },
+          pair.publicKey,
+          rawAESKey
+        );
+
+        lastPackage = {
+          ciphertext: bytesToBase64(new Uint8Array(encryptedBytes)),
+          encryptedKey: bytesToBase64(new Uint8Array(encryptedAESKey)),
+          iv: bytesToBase64(iv)
+        };
+
+        setOutput("cipherText", lastPackage.ciphertext);
+        setOutput("encryptedKey", lastPackage.encryptedKey);
+        setOutput("ivValue", lastPackage.iv);
+        $("receivedCipher").value = lastPackage.ciphertext;
+        $("receivedKey").value = lastPackage.encryptedKey;
+        $("receivedIv").value = lastPackage.iv;
+        setOutput("decryptedText", "Decrypt the received package to see the original message.", true);
+        setOutput("decryptResult", "Encrypted successfully. Ready for recipient decryption.", false);
+        showStatus("Success! Message encrypted with AES-256-GCM and AES key protected with RSA-OAEP.", "ok");
+      } catch (error) {
+        console.error(error);
+        showStatus(error.message || "Encryption failed. Please try again.", "error");
+      } finally {
+        $("encryptBtn").disabled = false;
+      }
+    }
+
+    async function decryptMessage() {
+      $("decryptBtn").disabled = true;
+      try {
+        if (!rsaKeyPair) {
+          throw new Error("No recipient key pair exists in this session. Encrypt a message first, then decrypt it.");
+        }
+        const cipherBytes = base64ToBytes($("receivedCipher").value);
+        const encryptedKeyBytes = base64ToBytes($("receivedKey").value);
+        const iv = base64ToBytes($("receivedIv").value);
+
+        if (iv.length !== 12) throw new Error("Invalid IV. AES-GCM requires the 12-byte IV generated by this demo.");
+
+        // Recipient uses their RSA private key to recover the original AES key.
+        const rawAESKey = await crypto.subtle.decrypt(
+          { name: "RSA-OAEP" },
+          rsaKeyPair.privateKey,
+          encryptedKeyBytes
+        );
+        const aesKey = await crypto.subtle.importKey(
+          "raw",
+          rawAESKey,
+          { name: "AES-GCM" },
+          false,
+          ["decrypt"]
+        );
+
+        // AES-GCM verifies integrity while decrypting.
+        const plainBytes = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv },
+          aesKey,
+          cipherBytes
+        );
+        const plaintext = decoder.decode(plainBytes);
+        setOutput("decryptedText", plaintext);
+        setOutput("decryptResult", "✓ Decryption successful. RSA recovered the AES key and AES-GCM recovered the message.");
+        showStatus("Decryption successful! The original message has been recovered.", "ok");
+      } catch (error) {
+        console.error(error);
+        setOutput("decryptedText", "Unable to decrypt this message.", true);
+        setOutput("decryptResult", error.name === "OperationError"
+          ? "Decryption failed: the message/key/IV may be incorrect or the data may have been modified."
+          : (error.message || "Decryption failed."));
+        showStatus(error.message || "Decryption failed. Check the received values.", "error");
+      } finally {
+        $("decryptBtn").disabled = false;
+      }
+    }
+
+    async function copyPackage() {
+      const data = {
+        algorithm: "AES-256-GCM + RSA-OAEP-2048/SHA-256",
+        ciphertext: $("receivedCipher").value.trim(),
+        encryptedAESKey: $("receivedKey").value.trim(),
+        iv: $("receivedIv").value.trim()
+      };
+      if (!data.ciphertext || !data.encryptedAESKey || !data.iv) {
+        showStatus("Encrypt a message first, or fill in all received fields.", "error");
+        return;
+      }
+      const text = JSON.stringify(data, null, 2);
+      try {
+        await navigator.clipboard.writeText(text);
+        showStatus("Encrypted package copied as JSON. It contains ciphertext, encrypted AES key, and IV.", "ok");
+      } catch {
+        const temp = document.createElement("textarea");
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        const success = document.execCommand("copy");
+        temp.remove();
+        showStatus(success ? "Encrypted package copied as JSON." : "Copy was blocked by the browser. You can copy the fields manually.", success ? "ok" : "error");
+      }
+    }
+
+    $("encryptBtn").addEventListener("click", encryptMessage);
+    $("decryptBtn").addEventListener("click", decryptMessage);
+    $("copyBtn").addEventListener("click", copyPackage);
+    $("sampleBtn").addEventListener("click", () => {
+      $("plainMessage").value = "Hello! This is a secure message for my recipient.";
+      showStatus("Sample message inserted. Click Encrypt Message to begin.", "ok");
+    });
+  </script>
+</body>
+</html>
